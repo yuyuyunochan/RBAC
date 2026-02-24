@@ -70,12 +70,12 @@ public class Role {
 
     @Override
     public String toString() {
-        return "Role{id='" + id + "', name='" + name + "'}";
+        return "main.java.Role{id='" + id + "', name='" + name + "'}";
     }
 
     public String format() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Role: ").append(name).append(" [ID: ").append(id).append("]\n");
+        sb.append("main.java.Role: ").append(name).append(" [ID: ").append(id).append("]\n");
         sb.append("  Description: ").append(description).append("\n");
         sb.append("  Permissions (").append(permissions.size()).append("):\n");
         for (Permission p : permissions) {

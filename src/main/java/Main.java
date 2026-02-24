@@ -2,7 +2,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Создание пользователей");
 
-        User user1 = User.validate("user1", "User Name1", "email@gmail.com");
+        User user1 = User.validate("user1", "main.java.User Name1", "email@gmail.com");
         System.out.println(user1.format());
 
         try {
@@ -12,13 +12,13 @@ public class Main {
         }
 
         try {
-            User badEmail = User.validate("username", "User Name2", "email@com");
+            User badEmail = User.validate("username", "main.java.User Name2", "email@com");
         } catch (IllegalArgumentException e) {
             System.out.println("Ошибка: " + e.getMessage());
         }
 
         try {
-            User badUsername = User.validate("no username", "User Name3", "email@gmail.com");
+            User badUsername = User.validate("no username", "main.java.User Name3", "email@gmail.com");
         } catch (IllegalArgumentException e) {
             System.out.println("Ошибка: " + e.getMessage());
         }
@@ -66,7 +66,7 @@ public class Main {
 
         System.out.println("\nВременное назначение");
 
-        User user2 = User.validate("username", "User Name1", "email@gmail.com");
+        User user2 = User.validate("username", "main.java.User Name1", "email@gmail.com");
         Role viewerRole = new Role("Viewer", "Доступ только к просмотру");
         viewerRole.addPermission(readUsers);
 
