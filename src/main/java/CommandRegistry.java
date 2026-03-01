@@ -809,8 +809,8 @@ public class CommandRegistry {
 
         parser.registerCommand("exit", "Выход из программы", (scanner, system) -> {
             System.out.print("Вы уверены что хотите выйти? (да/нет): ");
-            String confirm = scanner.nextLine().trim();
-            if (confirm.equals("да")) {
+            String confirm = scanner.nextLine().trim().toLowerCase();
+            if (confirm.equals("да") || confirm.equals("yes") || confirm.equals("y") || confirm.equals("д")) {
                 System.out.println("Выход");
                 System.exit(0);
             } else {
