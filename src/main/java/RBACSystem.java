@@ -8,6 +8,7 @@ public class RBACSystem {
     private UserManager userManager;
     private RoleManager roleManager;
     private AssignmentManager assignmentManager;
+    private AuditLog auditLog;
     private String currentUser;
 
     public RBACSystem() {
@@ -15,6 +16,7 @@ public class RBACSystem {
         this.roleManager = new RoleManager();
         this.assignmentManager = new AssignmentManager(userManager, roleManager);
         this.roleManager.setAssignmentManager(assignmentManager);
+        this.auditLog = new AuditLog();
         this.currentUser = "system";
     }
 
@@ -30,6 +32,10 @@ public class RBACSystem {
         return assignmentManager;
     }
 
+    public AuditLog getAuditLog() {
+        return auditLog;
+    }
+
     public String getCurrentUser() {
         return currentUser;
     }
@@ -42,11 +48,9 @@ public class RBACSystem {
         Permission readUsers = new Permission("read", "users", "Просмотр пользователей");
         Permission writeUsers = new Permission("write", "users", "Редактирование пользователей");
         Permission deleteUsers = new Permission("delete", "users", "Удаление пользователей");
-
         Permission readRoles = new Permission("read", "roles", "Просмотр ролей");
         Permission writeRoles = new Permission("write", "roles", "Редактирование ролей");
         Permission deleteRoles = new Permission("delete", "roles", "Удаление ролей");
-
         Permission readReports = new Permission("read", "reports", "Просмотр отчётов");
         Permission writeReports = new Permission("write", "reports", "Редактирование отчётов");
 
@@ -83,6 +87,8 @@ public class RBACSystem {
         assignmentManager.add(adminAssignment);
 
         this.currentUser = "admin";
+
+        auditLog.log("SYSTEM_INIT", "system", "system", "Система инициализирована");
     }
 
     public String generateStatistics() {
@@ -90,9 +96,7 @@ public class RBACSystem {
         sb.append("****************************************\n");
         sb.append("*        СТАТИСТИКА СИСТЕМЫ            *\n");
         sb.append("****************************************\n");
-
         sb.append(" Пользователей: ").append(userManager.count()).append("\n");
-
         sb.append(" Ролей: ").append(roleManager.count()).append("\n");
 
         int totalAssignments = assignmentManager.count();
@@ -109,9 +113,7 @@ public class RBACSystem {
             sb.append(" Среднее ролей на пользователя: ")
                     .append(String.format("%.1f", avgRoles)).append("\n");
         }
-
         sb.append("\n");
-
         sb.append("****************************************\n");
         return sb.toString();
     }
