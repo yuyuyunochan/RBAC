@@ -44,6 +44,8 @@ public class CommandRegistry {
 
             User user = User.validate(username, fullName, email);
             system.getUserManager().add(user);
+            system.getAuditLog().log("USER_CREATE", system.getCurrentUser(),
+                    username, "Создан пользователь: " + fullName);
             System.out.println("Пользователь '" + username + "' успешно создан.");
         });
 
@@ -114,14 +116,14 @@ public class CommandRegistry {
             }
 
             User user = userOpt.get();
-
             List<RoleAssignment> assignments = system.getAssignmentManager().findByUser(user);
             for (RoleAssignment ra : assignments) {
                 system.getAssignmentManager().remove(ra);
             }
-
             system.getUserManager().remove(user);
-            System.out.println("Пользователь '" + username + "' удалён");
+            system.getAuditLog().log("USER_DELETE", system.getCurrentUser(),
+                    username, "Пользователь удалён");
+            System.out.println("Пользователь '" + username + "' удалён.");
         });
 
         parser.registerCommand("user-search", "Поиск пользователей", (scanner, system) -> {
@@ -197,21 +199,20 @@ public class CommandRegistry {
 
             Role role = new Role(name, description);
             system.getRoleManager().add(role);
-            System.out.println("Роль '" + name + "' создана");
+            system.getAuditLog().log("ROLE_CREATE", system.getCurrentUser(),
+                    name, "Создана роль: " + description);
+            System.out.println("Роль '" + name + "' создана.");
 
             while (true) {
                 System.out.print("Добавить право? (да/нет): ");
                 String answer = scanner.nextLine().trim();
-                if (!answer.equals("да")) {
-                    break;
-                }
-                System.out.print("  Название права (например read): ");
+                if (!answer.equals("да")) break;
+                System.out.print("  Название права: ");
                 String permName = scanner.nextLine().trim();
-                System.out.print("  Ресурс (например users): ");
+                System.out.print("  Ресурс: ");
                 String resource = scanner.nextLine().trim();
                 System.out.print("  Описание: ");
                 String permDesc = scanner.nextLine().trim();
-
                 try {
                     Permission perm = new Permission(permName, resource, permDesc);
                     role.addPermission(perm);
@@ -455,10 +456,14 @@ public class CommandRegistry {
                         user, role, meta, expiresAt, autoRenew);
                 system.getAssignmentManager().add(ta);
                 System.out.println("Временное назначение создано.");
+                system.getAuditLog().log("ROLE_ASSIGN", system.getCurrentUser(),
+                        username, "Назначена роль: " + role + " (временно до " + expiresAt + ")");
             } else {
                 PermanentAssignment pa = new PermanentAssignment(user, role, meta);
                 system.getAssignmentManager().add(pa);
                 System.out.println("Постоянное назначение создано");
+                system.getAuditLog().log("ROLE_ASSIGN", system.getCurrentUser(),
+                        username, "Назначена роль: " + role + " (постоянно)");
             }
         });
 
@@ -511,6 +516,8 @@ public class CommandRegistry {
             if (selected instanceof PermanentAssignment) {
                 ((PermanentAssignment) selected).revoke();
                 System.out.println("Назначение отозвано");
+                system.getAuditLog().log("ROLE_REVOKE", system.getCurrentUser(),
+                        username, "Отозвана роль: " + selected.role().getName());
             } else {
                 system.getAssignmentManager().remove(selected);
                 System.out.println("Назначение удалено");
@@ -793,17 +800,59 @@ public class CommandRegistry {
 //служебные команды
     private static void registerServiceCommands(CommandParser parser) {
 
-        parser.registerCommand("help", "Справка по командам", (scanner, system) -> {
-            parser.printHelp();
-        });
+        parser.registerCommand("help", "Справка по командам", (scanner, system) -> parser.printHelp());
 
-        parser.registerCommand("stats", "Статистика системы", (scanner, system) -> {
-            System.out.println(system.generateStatistics());
-        });
+        parser.registerCommand("stats", "Статистика системы", (scanner, system) -> System.out.println(system.generateStatistics()));
 
         parser.registerCommand("clear", "Очистить экран", (scanner, system) -> {
             for (int i = 0; i < 50; i++) {
                 System.out.println();
+            }
+        });
+
+        parser.registerCommand("audit-log", "Журнал аудита", (scanner, system) -> {
+            System.out.println("1. Показать весь лог");
+            System.out.println("2. Фильтр по исполнителю");
+            System.out.println("3. Фильтр по действию");
+            System.out.println("4. Сохранить лог в файл");
+            System.out.print("Ваш выбор: ");
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    system.getAuditLog().printLog();
+                    break;
+                case "2":
+                    System.out.print("Введите имя исполнителя: ");
+                    String performer = scanner.nextLine().trim();
+                    List<AuditEntry> byPerformer = system.getAuditLog().getByPerformer(performer);
+                    if (byPerformer.isEmpty()) {
+                        System.out.println("Записей не найдено.");
+                    } else {
+                        for (AuditEntry e : byPerformer) {
+                            System.out.println(e.format());
+                        }
+                    }
+                    break;
+                case "3":
+                    System.out.print("Введите действие (USER_CREATE, ROLE_ASSIGN и т.д.): ");
+                    String action = scanner.nextLine().trim();
+                    List<AuditEntry> byAction = system.getAuditLog().getByAction(action);
+                    if (byAction.isEmpty()) {
+                        System.out.println("Записей не найдено.");
+                    } else {
+                        for (AuditEntry e : byAction) {
+                            System.out.println(e.format());
+                        }
+                    }
+                    break;
+                case "4":
+                    System.out.print("Имя файла: ");
+                    String filename = scanner.nextLine().trim();
+                    system.getAuditLog().saveToFile(filename);
+                    break;
+                default:
+                    System.out.println("Неверный выбор.");
             }
         });
 
