@@ -856,6 +856,48 @@ public class CommandRegistry {
             }
         });
 
+        parser.registerCommand("report-users", "Отчёт по пользователям", (scanner, system) -> {
+            String report = ReportGenerator.generateUserReport(
+                    system.getUserManager(), system.getAssignmentManager());
+            System.out.println(report);
+
+            System.out.print("Сохранить в файл? (да/нет): ");
+            String save = scanner.nextLine().trim();
+            if (save.equals("да")) {
+                System.out.print("Имя файла: ");
+                String filename = scanner.nextLine().trim();
+                ReportGenerator.exportToFile(report, filename);
+            }
+        });
+
+        parser.registerCommand("report-roles", "Отчёт по ролям", (scanner, system) -> {
+            String report = ReportGenerator.generateRoleReport(
+                    system.getRoleManager(), system.getAssignmentManager());
+            System.out.println(report);
+
+            System.out.print("Сохранить в файл? (да/нет): ");
+            String save = scanner.nextLine().trim();
+            if (save.equals("да")) {
+                System.out.print("Имя файла: ");
+                String filename = scanner.nextLine().trim();
+                ReportGenerator.exportToFile(report, filename);
+            }
+        });
+
+        parser.registerCommand("report-matrix", "Матрица прав доступа", (scanner, system) -> {
+            String report = ReportGenerator.generatePermissionMatrix(
+                    system.getUserManager(), system.getAssignmentManager());
+            System.out.println(report);
+
+            System.out.print("Сохранить в файл? (да/нет): ");
+            String save = scanner.nextLine().trim();
+            if (save.equals("да")) {
+                System.out.print("Имя файла: ");
+                String filename = scanner.nextLine().trim();
+                ReportGenerator.exportToFile(report, filename);
+            }
+        });
+
         parser.registerCommand("exit", "Выход из программы", (scanner, system) -> {
             System.out.print("Вы уверены что хотите выйти? (да/нет): ");
             String confirm = scanner.nextLine().trim().toLowerCase();
