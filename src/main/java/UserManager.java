@@ -1,27 +1,29 @@
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class UserManager implements Repository<User> {
 
-    private Map<String, User> users;
+    private final ConcurrentMap<String, User> users;
 
     public UserManager() {
-        this.users = new HashMap<>();
+        this.users = new ConcurrentHashMap<>();
     }
+
     @Override
     public void add(User item) {
         if (item == null) {
             throw new IllegalArgumentException("Пользователь не может быть null");
         }
-        if (users.containsKey(item.username())) {
+
+        User existing = users.putIfAbsent(item.username(), item);
+        if (existing != null) {
             throw new IllegalArgumentException(
                     "Пользователь с username '" + item.username() + "' уже существует");
         }
-        users.put(item.username(), item);
     }
 
     @Override
@@ -29,7 +31,7 @@ public class UserManager implements Repository<User> {
         if (item == null) {
             return false;
         }
-        return users.remove(item.username()) != null;
+        return users.remove(item.username(), item);
     }
 
     @Override
@@ -53,10 +55,17 @@ public class UserManager implements Repository<User> {
     }
 
     public Optional<User> findByUsername(String username) {
+        if (username == null) {
+            return Optional.empty();
+        }
         return Optional.ofNullable(users.get(username));
     }
 
     public Optional<User> findByEmail(String email) {
+        if (email == null) {
+            return Optional.empty();
+        }
+
         for (User user : users.values()) {
             if (user.email().equals(email)) {
                 return Optional.of(user);
@@ -67,6 +76,10 @@ public class UserManager implements Repository<User> {
 
     public List<User> findByFilter(UserFilter filter) {
         List<User> result = new ArrayList<>();
+        if (filter == null) {
+            return result;
+        }
+
         for (User user : users.values()) {
             if (filter.test(user)) {
                 result.add(user);
@@ -75,17 +88,45 @@ public class UserManager implements Repository<User> {
         return result;
     }
 
+    public List<User> findByFilterParallel(UserFilter filter) {
+        if (filter == null) {
+            return new ArrayList<>();
+        }
+
+        return users.values()
+                .parallelStream()
+                .filter(filter::test)
+                .toList();
+    }
+
     public List<User> findAll(UserFilter filter, Comparator<User> sorter) {
         List<User> result = findByFilter(filter);
-        result.sort(sorter);
+        if (sorter != null) {
+            result.sort(sorter);
+        }
+        return result;
+    }
+
+    public List<User> findAllParallel(UserFilter filter, Comparator<User> sorter) {
+        List<User> result = new ArrayList<>(findByFilterParallel(filter));
+        if (sorter != null) {
+            result.sort(sorter);
+        }
         return result;
     }
 
     public boolean exists(String username) {
+        if (username == null) {
+            return false;
+        }
         return users.containsKey(username);
     }
 
     public void update(String username, String newFullName, String newEmail) {
+        if (username == null) {
+            throw new IllegalArgumentException("Username не может быть null");
+        }
+
         if (!users.containsKey(username)) {
             throw new IllegalArgumentException(
                     "Пользователь с username '" + username + "' не найден");
@@ -98,9 +139,7 @@ public class UserManager implements Repository<User> {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null) return false;
-        if (getClass() != obj.getClass()) return false;
-        UserManager other = (UserManager) obj;
+        if (!(obj instanceof UserManager other)) return false;
         return users.equals(other.users);
     }
 
