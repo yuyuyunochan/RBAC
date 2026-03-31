@@ -81,6 +81,12 @@ public class AuditLog {
         }
     }
 
+    public void clear() {
+        synchronized (entries) {
+            entries.clear();
+        }
+    }
+
     public void printLog() {
         List<AuditEntry> snapshot = getAll();
 
