@@ -1,14 +1,11 @@
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 public class RBACSystem {
 
-    private UserManager userManager;
-    private RoleManager roleManager;
-    private AssignmentManager assignmentManager;
-    private AuditLog auditLog;
+    private final UserManager userManager;
+    private final RoleManager roleManager;
+    private final AssignmentManager assignmentManager;
+    private final AuditLog auditLog;
+    private final BackgroundExecutor backgroundExecutor;
+
     private String currentUser;
 
     public RBACSystem() {
@@ -16,7 +13,10 @@ public class RBACSystem {
         this.roleManager = new RoleManager();
         this.assignmentManager = new AssignmentManager(userManager, roleManager);
         this.roleManager.setAssignmentManager(assignmentManager);
+
         this.auditLog = new AuditLog();
+        this.backgroundExecutor = new BackgroundExecutor();
+
         this.currentUser = "system";
     }
 
@@ -36,6 +36,10 @@ public class RBACSystem {
         return auditLog;
     }
 
+    public BackgroundExecutor getBackgroundExecutor() {
+        return backgroundExecutor;
+    }
+
     public String getCurrentUser() {
         return currentUser;
     }
@@ -48,9 +52,11 @@ public class RBACSystem {
         Permission readUsers = new Permission("read", "users", "Просмотр пользователей");
         Permission writeUsers = new Permission("write", "users", "Редактирование пользователей");
         Permission deleteUsers = new Permission("delete", "users", "Удаление пользователей");
+
         Permission readRoles = new Permission("read", "roles", "Просмотр ролей");
         Permission writeRoles = new Permission("write", "roles", "Редактирование ролей");
         Permission deleteRoles = new Permission("delete", "roles", "Удаление ролей");
+
         Permission readReports = new Permission("read", "reports", "Просмотр отчётов");
         Permission writeReports = new Permission("write", "reports", "Редактирование отчётов");
 
@@ -82,11 +88,13 @@ public class RBACSystem {
         User admin = User.validate("admin", "System Administrator", "admin@system.com");
         userManager.add(admin);
 
-        AssignmentMetadata meta = AssignmentMetadata.now("system", "Начальная инициализация системы");
-        PermanentAssignment adminAssignment = new PermanentAssignment(admin, adminRole, meta);
-        assignmentManager.add(adminAssignment);
+        AssignmentMetadata metadata =
+                AssignmentMetadata.now("system", "Начальная инициализация системы");
+        PermanentAssignment assignment =
+                new PermanentAssignment(admin, adminRole, metadata);
+        assignmentManager.add(assignment);
 
-        this.currentUser = "admin";
+        currentUser = "admin";
 
         auditLog.log("SYSTEM_INIT", "system", "system", "Система инициализирована");
     }
@@ -96,6 +104,7 @@ public class RBACSystem {
         sb.append("****************************************\n");
         sb.append("*        СТАТИСТИКА СИСТЕМЫ            *\n");
         sb.append("****************************************\n");
+
         sb.append(" Пользователей: ").append(userManager.count()).append("\n");
         sb.append(" Ролей: ").append(roleManager.count()).append("\n");
 
@@ -109,12 +118,19 @@ public class RBACSystem {
 
         int userCount = userManager.count();
         if (userCount > 0) {
-            double avgRoles = (double) activeAssignments / userCount;
+            double averageRoles = (double) activeAssignments / userCount;
             sb.append(" Среднее ролей на пользователя: ")
-                    .append(String.format("%.1f", avgRoles)).append("\n");
+                    .append(String.format("%.1f", averageRoles))
+                    .append("\n");
         }
+
         sb.append("\n");
         sb.append("****************************************\n");
         return sb.toString();
+    }
+
+    public void shutdown() {
+        backgroundExecutor.shutdown();
+        auditLog.shutdown();
     }
 }
