@@ -4,7 +4,7 @@ public class Main {
     public static void main(String[] args) {
         RBACSystem system = new RBACSystem();
         system.initialize();
-
+        system.startScheduledTasks(30);
         CommandParser parser = new CommandParser();
         CommandRegistry.registerAll(parser);
 
