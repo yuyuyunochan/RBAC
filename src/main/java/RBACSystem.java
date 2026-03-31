@@ -1,3 +1,8 @@
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class RBACSystem {
 
     private final UserManager userManager;
@@ -5,6 +10,7 @@ public class RBACSystem {
     private final AssignmentManager assignmentManager;
     private final AuditLog auditLog;
     private final BackgroundExecutor backgroundExecutor;
+    private final ScheduledExecutorService scheduledExecutorService;
 
     private String currentUser;
 
@@ -16,6 +22,7 @@ public class RBACSystem {
 
         this.auditLog = new AuditLog();
         this.backgroundExecutor = new BackgroundExecutor();
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
         this.currentUser = "system";
     }
@@ -99,6 +106,52 @@ public class RBACSystem {
         auditLog.log("SYSTEM_INIT", "system", "system", "Система инициализирована");
     }
 
+    public void startScheduledTasks(int periodSeconds) {
+        scheduledExecutorService.scheduleAtFixedRate(() -> {
+            try {
+                List<RoleAssignment> expiredAssignments = assignmentManager.getExpiredAssignments();
+
+                int expiredCount = 0;
+                for (RoleAssignment assignment : expiredAssignments) {
+                    if (assignment instanceof TemporaryAssignment temporaryAssignment) {
+                        assignmentManager.remove(temporaryAssignment);
+                        expiredCount++;
+                    }
+                }
+
+                if (expiredCount > 0) {
+                    auditLog.log(
+                            "EXPIRED_ASSIGNMENTS_CLEANUP",
+                            "scheduler",
+                            "assignments",
+                            "Удалено истёкших назначений: " + expiredCount
+                    );
+                }
+
+                auditLog.log(
+                        "SYSTEM_STATS",
+                        "scheduler",
+                        "system",
+                        "Пользователей=" + userManager.count()
+                                + ", ролей=" + roleManager.count()
+                                + ", назначений=" + assignmentManager.count()
+                );
+
+            } catch (Exception e) {
+                auditLog.log(
+                        "SCHEDULER_ERROR",
+                        "scheduler",
+                        "system",
+                        "Ошибка периодической задачи: " + e.getMessage()
+                );
+            }
+        }, periodSeconds, periodSeconds, TimeUnit.SECONDS);
+    }
+
+    public void stopScheduledTasks() {
+        scheduledExecutorService.shutdown();
+    }
+
     public String generateStatistics() {
         StringBuilder sb = new StringBuilder();
         sb.append("****************************************\n");
@@ -130,6 +183,7 @@ public class RBACSystem {
     }
 
     public void shutdown() {
+        stopScheduledTasks();
         backgroundExecutor.shutdown();
         auditLog.shutdown();
     }
